@@ -41,3 +41,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Ignorar configurações locais
+.vscode/
+.idea/
+
+# Arquivos do Flutter e dependências
+build/
+pubspec.lock
+
+# Arquivo sensível do Firebase
+android/app/google-services.json
