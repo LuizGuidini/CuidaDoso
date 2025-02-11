@@ -36,11 +36,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  bool _showMotoristas = false;
 
-  void _incrementCounter() {
+  // Função para alternar a visualização dos motoristas
+  void _toggleMotoristas() {
     setState(() {
-      _counter++;
+      _showMotoristas = !_showMotoristas;
     });
   }
 
@@ -51,43 +52,46 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text('CuidaDoso App'),
       ),
       body: Center(
-        child: FutureBuilder<DocumentSnapshot>(
-          future: widget.connector.getDocument('users', 'someUserId'), // Modifique conforme seu Firestore
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CircularProgressIndicator();
-            }
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            // Botão para alternar entre mostrar motoristas ou não
+            ElevatedButton(
+              onPressed: _toggleMotoristas,
+              child: Text(_showMotoristas ? 'Esconder Motoristas' : 'Mostrar Motoristas'),
+            ),
+            
+            // Exibir motoristas usando StreamBuilder quando o botão for pressionado
+            if (_showMotoristas) 
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('motoristas').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
 
-            if (snapshot.hasError) {
-              return Text('Erro: ${snapshot.error}');
-            }
+                  if (snapshot.hasError) {
+                    return Text('Erro: ${snapshot.error}');
+                  }
 
-            if (!snapshot.hasData || snapshot.data == null) {
-              return const Text('Nenhum dado encontrado');
-            }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Text('Nenhum motorista cadastrado');
+                  }
 
-            var data = snapshot.data!.data() as Map<String, dynamic>;
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Text('Você tem pressionado o botão esta quantidade de vezes:'),
-                Text(
-                  '$_counter',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                Text(
-                  'Nome: ${data['name']}, Idade: ${data['age']}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ],
-            );
-          },
+                  var motoristas = snapshot.data!.docs;
+                  return Column(
+                    children: motoristas.map((motorista) {
+                      var data = motorista.data() as Map<String, dynamic>;
+                      return ListTile(
+                        title: Text('Nome: ${data['nome']}'),
+                        subtitle: Text('Idade: ${data['idade']}'),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+          ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Incrementar',
-        child: const Icon(Icons.add),
       ),
     );
   }
