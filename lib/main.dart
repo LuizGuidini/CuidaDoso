@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Para Firestore
-import 'default_connector.dart';  // Certifique-se de que DefaultConnector está correto
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(); // Inicializa o Firebase
-  DefaultConnector connector = await DefaultConnector.initialize(); // Inicializa o DefaultConnector
-  runApp(MyApp(connector: connector));  // Passa o connector para o app
+  runApp(MyApp());  // Inicializa o app
 }
 
 class MyApp extends StatelessWidget {
-  final DefaultConnector connector;
-
-  const MyApp({super.key, required this.connector});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,29 +18,19 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(connector: connector),
+      home: MyHomePage(),  // Página inicial
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  final DefaultConnector connector;
-  const MyHomePage({super.key, required this.connector});
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool _showMotoristas = false;
-
-  // Função para alternar a visualização dos motoristas
-  void _toggleMotoristas() {
-    setState(() {
-      _showMotoristas = !_showMotoristas;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,45 +38,45 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text('CuidaDoso App'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // Botão para alternar entre mostrar motoristas ou não
-            ElevatedButton(
-              onPressed: _toggleMotoristas,
-              child: Text(_showMotoristas ? 'Esconder Motoristas' : 'Mostrar Motoristas'),
-            ),
-            
-            // Exibir motoristas usando StreamBuilder quando o botão for pressionado
-            if (_showMotoristas) 
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('motoristas').snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
-                  }
+        child: FutureBuilder<QuerySnapshot>(
+          // Aqui, você acessa a coleção 'motoristas' no Firestore
+          future: FirebaseFirestore.instance.collection('motoristas').get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            }
 
-                  if (snapshot.hasError) {
-                    return Text('Erro: ${snapshot.error}');
-                  }
+            if (snapshot.hasError) {
+              return Text('Erro: ${snapshot.error}');
+            }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Text('Nenhum motorista cadastrado');
-                  }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Text('Nenhum motorista encontrado');
+            }
 
-                  var motoristas = snapshot.data!.docs;
+            // Se houver dados, mostre os motoristas
+            var motoristas = snapshot.data!.docs;
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const Text('Motoristas cadastrados:'),
+                ...motoristas.map((doc) {
+                  var data = doc.data() as Map<String, dynamic>;
                   return Column(
-                    children: motoristas.map((motorista) {
-                      var data = motorista.data() as Map<String, dynamic>;
-                      return ListTile(
-                        title: Text('Nome: ${data['nome']}'),
-                        subtitle: Text('Idade: ${data['idade']}'),
-                      );
-                    }).toList(),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Documento: ${data['documento']}'),
+                      Text('Foto: ${data['foto']}'),
+                      Text('Idade: ${data['idade']}'),
+                      Text('Nome: ${data['nome']}'),
+                      Text('Veículo: ${data['veiculo']}'),
+                      const Divider(),  // Linha separadora entre motoristas
+                    ],
                   );
-                },
-              ),
-          ],
+                }),
+              ],
+            );
+          },
         ),
       ),
     );
